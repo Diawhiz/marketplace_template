@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+    <h2>{{ object.name }}</h2>
+    {% if object.image %}
+    <img src="{{ object.image.url }}" class="img-fluid" alt="{{ object.name }}">
+    {% endif %}
+    <p>{{ object.description }}</p>
+    <p>Price: ${{ object.price }}</p>
+    <p>Category: {{ object.category }}</p>
+    <p>Stock: {{ object.inventory }}</p>
+    <a href="{% url 'add_to_cart' object.id %}" class="btn btn-primary">Add to Cart</a>
+</div>
+{% endblock %}

@@ -2,10 +2,14 @@ django==5.2.6
 
 mysqlclient==2.2.7
 
-django-allauth==65.11.1 
+django-allauth==65.11.1
 
 Pillow==10.4.0
 
-mysqlclient==2.2.7 
+stripe==12.5.0
 
-stripe==12.5.0 
+PyJWT==2.10.1
+
+python-decouple==3.8
+
+cryptography==45.0.7
