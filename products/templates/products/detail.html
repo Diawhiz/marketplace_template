@@ -17,7 +17,7 @@
             <p class="text-gray-600 mb-2">Category: {{ object.category }}</p>
             <p class="text-gray-600 mb-4">Stock: {{ object.inventory }}</p>
             {% if object.inventory > 0 %}
-                <form method="post" action="{% url 'add_to_cart' object.id %}">
+                <form method="post" action="{% url 'orders:add_to_cart' object.id %}">
                     {% csrf_token %}
                     <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" aria-label="Add {{ object.name }} to cart">Add to Cart</button>
                 </form>

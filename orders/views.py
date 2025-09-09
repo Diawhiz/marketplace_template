@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.conf import settings
+from django.contrib import messages
 import stripe
 from products.models import Product
 from .models import Order, OrderItem
@@ -15,14 +16,19 @@ def add_to_cart(request, product_id):
     if product.inventory > 0:
         cart[str(product_id)] = cart.get(str(product_id), 0) + 1
         request.session['cart'] = cart
-    return redirect('cart')
+        messages.success(request, f"{product.name} added to cart.")
+    else:
+        messages.error(request, f"{product.name} is out of stock.")
+    return redirect('orders:cart')
 
 def remove_from_cart(request, product_id):
     cart = request.session.get('cart', {})
+    product = get_object_or_404(Product, id=product_id)
     if str(product_id) in cart:
         del cart[str(product_id)]
         request.session['cart'] = cart
-    return redirect('cart')
+        messages.success(request, f"{product.name} removed from cart.")
+    return redirect('orders:cart')
 
 def view_cart(request):
     cart = request.session.get('cart', {})
@@ -35,7 +41,8 @@ def view_cart(request):
 def checkout(request):
     cart = request.session.get('cart', {})
     if not cart:
-        return redirect('cart')
+        messages.error(request, "Your cart is empty.")
+        return redirect('orders:cart')
     products = Product.objects.filter(id__in=cart.keys())
     cart_items = [{'product': p, 'quantity': cart[str(p.id)], 'total': p.price * cart[str(p.id)]} for p in products]
     total_price = sum(p.price * cart[str(p.id)] for p in products)
@@ -47,6 +54,7 @@ def checkout(request):
         product.save()
     request.session['cart'] = {}
     tax_amount = order.tax_amount
+    messages.success(request, "Order created successfully. Proceed to payment.")
     return render(request, 'orders/checkout.html', {
         'cart_items': cart_items,
         'total_price': total_price,

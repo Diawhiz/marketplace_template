@@ -28,7 +28,7 @@
             const checkoutButton = document.getElementById('checkout-button');
             checkoutButton.addEventListener('click', async (e) => {
                 e.preventDefault();
-                const response = await fetch('{% url 'create_checkout_session' order_id %}', {
+                const response = await fetch('{% url 'orders:create_checkout_session' order_id=order_id %}', {
                     method: 'GET',
                 });
                 const session = await response.json();

@@ -12,7 +12,7 @@
                 {% endfor %}
             </ul>
         </div>
-        {% endif %}
+    {% endif %}
     <form method="post" class="bg-white p-6 rounded-lg shadow-md max-w-md">
         {% csrf_token %}
         {{ form.as_p }}
