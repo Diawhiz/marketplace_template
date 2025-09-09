@@ -19,7 +19,7 @@
         <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full" aria-label="Login to your account">Login</button>
     </form>
     <div class="mt-4 text-center">
-        <a href="{% url 'socialaccount_connections' %}" class="text-blue-600 hover:underline" aria-label="Login with Google">Login with Google</a>
+        <a href="{% url 'social:begin' 'google' %}" class="text-blue-600 hover:underline" aria-label="Login with Google">Login with Google</a>
     </div>
 </div>
 {% endblock %}

@@ -39,8 +39,8 @@ ACCOUNT_LOGIN_METHODS = {'email'}
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'APP': {
-            'client_id': os.getenv('GOOGLE_CLIENT_ID'),
-            'secret': os.getenv('GOOGLE_SECRET'),
+            'client_id': config('GOOGLE_CLIENT_ID'),
+            'secret': config('GOOGLE_SECRET'),
             'key': '',
         },
         'SCOPE': ['profile', 'email'],
