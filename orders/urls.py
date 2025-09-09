@@ -9,4 +9,6 @@ urlpatterns = [
     path('webhook/', views.stripe_webhook, name='stripe_webhook'),
     path('success/', lambda x: render(x, 'orders/success.html'), name='success'),
     path('cancel/', lambda x: render(x, 'orders/cancel.html'), name='cancel'),
+    path('cart/remove/<int:product_id>/', views.remove_from_cart, name='remove_from_cart'),
+    path('order/<int:order_id>/', views.order_detail, name='order_detail'),
 ]

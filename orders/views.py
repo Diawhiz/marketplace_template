@@ -1,4 +1,3 @@
-# orders/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -18,6 +17,13 @@ def add_to_cart(request, product_id):
         request.session['cart'] = cart
     return redirect('cart')
 
+def remove_from_cart(request, product_id):
+    cart = request.session.get('cart', {})
+    if str(product_id) in cart:
+        del cart[str(product_id)]
+        request.session['cart'] = cart
+    return redirect('cart')
+
 def view_cart(request):
     cart = request.session.get('cart', {})
     products = Product.objects.filter(id__in=cart.keys())
@@ -31,6 +37,7 @@ def checkout(request):
     if not cart:
         return redirect('cart')
     products = Product.objects.filter(id__in=cart.keys())
+    cart_items = [{'product': p, 'quantity': cart[str(p.id)], 'total': p.price * cart[str(p.id)]} for p in products]
     total_price = sum(p.price * cart[str(p.id)] for p in products)
     order = Order.objects.create(user=request.user, total_price=total_price)
     for product_id, quantity in cart.items():
@@ -38,8 +45,15 @@ def checkout(request):
         OrderItem.objects.create(order=order, product=product, quantity=quantity, price=product.price)
         product.inventory -= quantity
         product.save()
-    request.session['cart'] = {}  # Clear cart
-    return redirect('create_checkout_session', order_id=order.id)
+    request.session['cart'] = {}
+    tax_amount = order.tax_amount
+    return render(request, 'orders/checkout.html', {
+        'cart_items': cart_items,
+        'total_price': total_price,
+        'tax_amount': tax_amount,
+        'order_id': order.id,
+        'STRIPE_PUBLIC_KEY': settings.STRIPE_PUBLIC_KEY
+    })
 
 @login_required
 def create_checkout_session(request, order_id):
@@ -64,6 +78,11 @@ def create_checkout_session(request, order_id):
     return JsonResponse({'id': session.id})
 
 @login_required
+def order_detail(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    return render(request, 'orders/order_detail.html', {'order': order})
+
+@login_required
 def stripe_webhook(request):
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
@@ -82,5 +101,4 @@ def stripe_webhook(request):
         order = Order.objects.get(id=order_id)
         order.status = 'PROCESSING'
         order.save()
-        # Optionally create Payment record if using payments app
     return JsonResponse({'status': 'success'})

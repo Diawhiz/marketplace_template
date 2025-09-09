@@ -1,16 +1,42 @@
 {% extends 'base.html' %}
+{% block title %}Checkout{% endblock %}
 {% block content %}
-<div class="container mt-5">
-    <h2>Checkout</h2>
-    <div id="stripe-checkout"></div>
+<div class="py-6">
+    <h1 class="text-2xl font-bold mb-6">Checkout</h1>
+    {% if cart_items %}
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-semibold mb-4">Order Summary</h2>
+            <ul class="divide-y divide-gray-200">
+                {% for item in cart_items %}
+                    <li class="py-2">
+                        <span>{{ item.product.name }} (x{{ item.quantity }})</span>
+                        <span class="float-right">${{ item.total }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+            <p class="text-lg font-semibold mt-4">Subtotal: ${{ total_price }}</p>
+            <p class="text-lg font-semibold">Tax: ${{ tax_amount }}</p>
+            <p class="text-xl font-bold mt-2">Total: ${{ total_price|add:tax_amount }}</p>
+            <form id="checkout-form" method="post">
+                {% csrf_token %}
+                <button id="checkout-button" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" aria-label="Proceed to payment">Pay Now</button>
+            </form>
+        </div>
+        <script src="https://js.stripe.com/v3/"></script>
+        <script>
+            const stripe = Stripe('{{ STRIPE_PUBLIC_KEY }}');
+            const checkoutButton = document.getElementById('checkout-button');
+            checkoutButton.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const response = await fetch('{% url 'create_checkout_session' order_id %}', {
+                    method: 'GET',
+                });
+                const session = await response.json();
+                stripe.redirectToCheckout({ sessionId: session.id });
+            });
+        </script>
+    {% else %}
+        <p class="text-gray-600 text-center">Your cart is empty. <a href="{% url 'products:product_list' %}" class="text-blue-600 hover:underline">Browse products</a>.</p>
+    {% endif %}
 </div>
-<script src="https://js.stripe.com/v3/"></script>
-<script>
-    const stripe = Stripe('{{ STRIPE_PUBLIC_KEY }}');
-    fetch('/orders/checkout-session/{{ order.id }}/')
-        .then(response => response.json())
-        .then(session => {
-            stripe.redirectToCheckout({ sessionId: session.id });
-        });
-</script>
 {% endblock %}
