@@ -1,12 +1,15 @@
 from pathlib import Path
 import os
 from decouple import config
+from decimal import Decimal
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', cast=bool)
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
+TAX_RATE = Decimal('0.05')
 
 INSTALLED_APPS = [
     'django.contrib.admin',

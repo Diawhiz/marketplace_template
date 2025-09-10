@@ -8,6 +8,8 @@ from products.models import Product
 from .models import Order, OrderItem
 from decimal import Decimal
 
+TAX_RATE = Decimal('0.05')
+
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 def add_to_cart(request, product_id):
@@ -39,29 +41,36 @@ def view_cart(request):
 
 @login_required
 def checkout(request):
-    cart = request.session.get('cart', {})
-    if not cart:
-        messages.error(request, "Your cart is empty.")
+    try:
+        cart = request.session.get('cart', {})
+        if not cart:
+            messages.error(request, "Your cart is empty.")
+            return redirect('orders:cart')
+        products = Product.objects.filter(id__in=cart.keys())
+        cart_items = [{'product': p, 'quantity': cart[str(p.id)], 'total': p.price * cart[str(p.id)]} for p in products]
+        total_price = sum(p.price * cart[str(p.id)] for p in products)
+        order = Order.objects.create(
+            user=request.user,
+            total_price=total_price,
+            tax_amount=total_price * settings.TAX_RATE
+        )
+        for product_id, quantity in cart.items():
+            product = Product.objects.get(id=product_id)
+            OrderItem.objects.create(order=order, product=product, quantity=quantity, price=product.price)
+            product.inventory -= quantity
+            product.save()
+        request.session['cart'] = {}
+        messages.success(request, "Order created successfully. Proceed to payment.")
+        return render(request, 'orders/checkout.html', {
+            'cart_items': cart_items,
+            'total_price': total_price,
+            'tax_amount': order.tax_amount,
+            'order_id': order.id,
+            'STRIPE_PUBLIC_KEY': settings.STRIPE_PUBLIC_KEY
+        })
+    except Exception as e:
+        messages.error(request, f"Checkout failed: {str(e)}")
         return redirect('orders:cart')
-    products = Product.objects.filter(id__in=cart.keys())
-    cart_items = [{'product': p, 'quantity': cart[str(p.id)], 'total': p.price * cart[str(p.id)]} for p in products]
-    total_price = sum(p.price * cart[str(p.id)] for p in products)
-    order = Order.objects.create(user=request.user, total_price=total_price)
-    for product_id, quantity in cart.items():
-        product = Product.objects.get(id=product_id)
-        OrderItem.objects.create(order=order, product=product, quantity=quantity, price=product.price)
-        product.inventory -= quantity
-        product.save()
-    request.session['cart'] = {}
-    tax_amount = order.tax_amount
-    messages.success(request, "Order created successfully. Proceed to payment.")
-    return render(request, 'orders/checkout.html', {
-        'cart_items': cart_items,
-        'total_price': total_price,
-        'tax_amount': tax_amount,
-        'order_id': order.id,
-        'STRIPE_PUBLIC_KEY': settings.STRIPE_PUBLIC_KEY
-    })
 
 @login_required
 def create_checkout_session(request, order_id):
@@ -88,7 +97,16 @@ def create_checkout_session(request, order_id):
 @login_required
 def order_detail(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
-    return render(request, 'orders/order_detail.html', {'order': order})
+    items = [{
+        'product': item.product,
+        'quantity': item.quantity,
+        'price': item.price,
+        'total': item.price * item.quantity
+    } for item in order.items.all()]
+    return render(request, 'orders/order_detail.html', {
+        'order': order,
+        'items': items
+    })
 
 @login_required
 def stripe_webhook(request):

@@ -10,13 +10,13 @@
                 {% for item in cart_items %}
                     <li class="py-2">
                         <span>{{ item.product.name }} (x{{ item.quantity }})</span>
-                        <span class="float-right">${{ item.total }}</span>
+                        <span class="float-right">&#8358;{{ item.total }}</span>
                     </li>
                 {% endfor %}
             </ul>
-            <p class="text-lg font-semibold mt-4">Subtotal: ${{ total_price }}</p>
-            <p class="text-lg font-semibold">Tax: ${{ tax_amount }}</p>
-            <p class="text-xl font-bold mt-2">Total: ${{ total_price|add:tax_amount }}</p>
+            <p class="text-lg font-semibold mt-4">Subtotal: &#8358;{{ total_price }}</p>
+            <p class="text-lg font-semibold">Tax: &#8358;{{ tax_amount }}</p>
+            <p class="text-xl font-bold mt-2">Total: &#8358;{{ total_price|add:tax_amount }}</p>
             <form id="checkout-form" method="post">
                 {% csrf_token %}
                 <button id="checkout-button" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" aria-label="Proceed to payment">Pay Now</button>

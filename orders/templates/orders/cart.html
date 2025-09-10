@@ -20,8 +20,8 @@
                         <tr>
                             <td class="p-4">{{ item.product.name }}</td>
                             <td class="p-4">{{ item.quantity }}</td>
-                            <td class="p-4">${{ item.product.price }}</td>
-                            <td class="p-4">${{ item.total }}</td>
+                            <td class="p-4">&#8358;{{ item.product.price }}</td>
+                            <td class="p-4">&#8358;{{ item.total }}</td>
                             <td class="p-4">
                                 <form method="post" action="{% url 'orders:remove_from_cart' item.product.id %}">
                                     {% csrf_token %}
@@ -33,7 +33,7 @@
                 </tbody>
             </table>
         </div>
-        <p class="text-xl font-semibold mt-4">Total: ${{ total_price }}</p>
+        <p class="text-xl font-semibold mt-4">Total: &#8358;{{ total_price }}</p>
         <a href="{% url 'orders:checkout' %}" class="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Checkout</a>
     {% else %}
         <p class="text-gray-600 text-center">Your cart is empty. <a href="{% url 'products:product_list' %}" class="text-blue-600 hover:underline">Browse products</a>.</p>
