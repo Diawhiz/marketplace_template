@@ -6,8 +6,11 @@ from .models import Order, Payment
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from orders.models import Order
+from decimal import Decimal
 
 paystack.api_key = settings.PAYSTACK_SECRET_KEY
+
+# TAX_RATE = Decimal('0.05')
 
 @login_required
 def create_checkout_session(request, order_id):
@@ -42,7 +45,7 @@ def paystack_webhook(request):
         )
     except ValueError:
         return JsonResponse({'status': 'invalid payload'}, status=400)
-    except stripe.error.SignatureVerificationError:
+    except paystack.error.SignatureVerificationError:
         return JsonResponse({'status': 'invalid signature'}, status=400)
 
     if event['type'] == 'checkout.session.completed':

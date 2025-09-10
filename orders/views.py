@@ -17,7 +17,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-TAX_RATE = Decimal('0.05')
+TAX_RATE = Decimal('0.005')
 
 paystack.api_key = settings.PAYSTACK_SECRET_KEY
 
