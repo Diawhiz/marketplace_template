@@ -6,15 +6,15 @@
     <div class="bg-white p-6 rounded-lg shadow-md">
         <p><strong>Date:</strong> {{ order.created_at|date:"F d, Y" }}</p>
         <p><strong>Status:</strong> {{ order.status }}</p>
-        <p><strong>Subtotal:</strong> ${{ order.total_price|floatformat:2 }}</p>
-        <p><strong>Tax:</strong> ${{ order.tax_amount|floatformat:2 }}</p>
-        <p><strong>Total:</strong> ${{ order.total_price|add:order.tax_amount|floatformat:2 }}</p>
+        <p><strong>Subtotal:</strong> ₦{{ order.total_price|floatformat:2 }}</p>
+        <p><strong>Tax:</strong> ₦{{ order.tax_amount|floatformat:2 }}</p>
+        <p><strong>Total:</strong> ₦{{ order.total_price|add:order.tax_amount|floatformat:2 }}</p>
         <h2 class="text-xl font-semibold mt-4 mb-2">Items</h2>
         <ul class="divide-y divide-gray-200">
             {% for item in items %}
                 <li class="py-2">
                     <span>{{ item.product.name }} (x{{ item.quantity }})</span>
-                    <span class="float-right">&#8358;{{ item.total|floatformat:2 }}</span>
+                    <span class="float-right">₦{{ item.total|floatformat:2 }}</span>
                 </li>
             {% endfor %}
         </ul>

@@ -3,14 +3,23 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.conf import settings
 from django.contrib import messages
-import stripe
+import paystack
 from products.models import Product
 from .models import Order, OrderItem
 from decimal import Decimal
+import json
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+import hmac
+import hashlib
+import logging
+
+logger = logging.getLogger(__name__)
 
 TAX_RATE = Decimal('0.05')
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
+paystack.api_key = settings.PAYSTACK_SECRET_KEY
 
 def add_to_cart(request, product_id):
     cart = request.session.get('cart', {})
@@ -45,8 +54,13 @@ def checkout(request):
         cart = request.session.get('cart', {})
         if not cart:
             messages.error(request, "Your cart is empty.")
+            logger.warning("Checkout attempted with empty cart.")
             return redirect('orders:cart')
         products = Product.objects.filter(id__in=cart.keys())
+        if not products:
+            messages.error(request, "No valid products in cart.")
+            logger.warning("No valid products found in cart.")
+            return redirect('orders:cart')
         cart_items = [{'product': p, 'quantity': cart[str(p.id)], 'total': p.price * cart[str(p.id)]} for p in products]
         total_price = sum(p.price * cart[str(p.id)] for p in products)
         order = Order.objects.create(
@@ -54,6 +68,8 @@ def checkout(request):
             total_price=total_price,
             tax_amount=total_price * settings.TAX_RATE
         )
+        order.save()  # Ensure the order is saved
+        logger.info(f"Created order {order.id} for user {request.user.id}")
         for product_id, quantity in cart.items():
             product = Product.objects.get(id=product_id)
             OrderItem.objects.create(order=order, product=product, quantity=quantity, price=product.price)
@@ -66,33 +82,35 @@ def checkout(request):
             'total_price': total_price,
             'tax_amount': order.tax_amount,
             'order_id': order.id,
-            'STRIPE_PUBLIC_KEY': settings.STRIPE_PUBLIC_KEY
+            'order': order,
+            'PAYSTACK_PUBLIC_KEY': settings.PAYSTACK_PUBLIC_KEY
         })
     except Exception as e:
+        logger.error(f"Checkout failed: {str(e)}")
         messages.error(request, f"Checkout failed: {str(e)}")
         return redirect('orders:cart')
 
 @login_required
 def create_checkout_session(request, order_id):
-    order = get_object_or_404(Order, id=order_id, user=request.user)
-    session = stripe.checkout.Session.create(
-        payment_method_types=['card'],
-        line_items=[{
-            'price_data': {
-                'currency': 'usd',
-                'product_data': {'name': f'Order {order.id}'},
-                'unit_amount': int((order.total_price + order.tax_amount) * 100),
-            },
-            'quantity': 1,
-        }],
-        mode='payment',
-        success_url=request.build_absolute_uri('/orders/success/'),
-        cancel_url=request.build_absolute_uri('/orders/cancel/'),
-        client_reference_id=str(order.id),
-    )
-    order.stripe_payment_id = session.id
-    order.save()
-    return JsonResponse({'id': session.id})
+    try:
+        order = Order.objects.get(id=order_id, user=request.user)
+        amount = int(order.total_price * 100)  # Paystack expects amount in kobo (NGN)
+        from paystackapi.transaction import Transaction
+        response = Transaction.initialize(
+            reference=f'order_{order_id}_{request.user.id}',
+            amount=amount,
+            email=request.user.email,
+            callback_url='http://127.0.0.1:8000/orders/success/'
+        )
+        if response['status']:
+            return redirect(response['data']['authorization_url'])
+        else:
+            return redirect('orders:checkout')
+    except Order.DoesNotExist:
+        return redirect('orders:cart')
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return redirect('orders:checkout')
 
 @login_required
 def order_detail(request, order_id):
@@ -108,23 +126,37 @@ def order_detail(request, order_id):
         'items': items
     })
 
-@login_required
-def stripe_webhook(request):
+@csrf_exempt
+@require_POST
+def paystack_webhook(request):
     payload = request.body
-    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
-    try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
-        )
-    except ValueError:
-        return JsonResponse({'status': 'invalid payload'}, status=400)
-    except stripe.error.SignatureVerificationError:
+    sig_header = request.META.get('HTTP_X_PAYSTACK_SIGNATURE')
+    secret = settings.PAYSTACK_SECRET_KEY  # Use the secret key for verification
+
+    # Verify webhook signature
+    computed_hmac = hmac.new(
+        key=secret.encode('utf-8'),
+        msg=payload,
+        digestmod=hashlib.sha512
+    ).hexdigest()
+
+    if sig_header != computed_hmac:
         return JsonResponse({'status': 'invalid signature'}, status=400)
 
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        order_id = session['client_reference_id']
-        order = Order.objects.get(id=order_id)
-        order.status = 'PROCESSING'
-        order.save()
-    return JsonResponse({'status': 'success'})
+    try:
+        event = json.loads(payload)
+        if event['event'] == 'charge.success':
+            reference = event['data']['reference']
+            from paystackapi.transaction import Transaction
+            response = Transaction.verify(reference=reference)
+            if response['status'] and response['data']['status'] == 'success':
+                order_id = reference.split('_')[1]  # Extract order_id from reference
+                order = Order.objects.get(id=order_id)
+                order.status = 'PROCESSING'
+                order.save()
+                return JsonResponse({'status': 'success'})
+    except Exception as e:
+        print(f"Webhook error: {str(e)}")
+        return JsonResponse({'status': 'invalid payload'}, status=400)
+
+    return JsonResponse({'status': 'ignored'}, status=200)

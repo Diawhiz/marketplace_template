@@ -1,6 +1,7 @@
+# orders/urls.py
 from django.urls import path
-from django.shortcuts import render
 from . import views
+from django.shortcuts import render
 
 app_name = 'orders'
 
@@ -9,7 +10,7 @@ urlpatterns = [
     path('cart/', views.view_cart, name='cart'),
     path('checkout/', views.checkout, name='checkout'),
     path('checkout-session/<int:order_id>/', views.create_checkout_session, name='create_checkout_session'),
-    path('webhook/', views.stripe_webhook, name='stripe_webhook'),
+    path('webhook/', views.paystack_webhook, name='paystack_webhook'),
     path('success/', lambda x: render(x, 'orders/success.html'), name='success'),
     path('cancel/', lambda x: render(x, 'orders/cancel.html'), name='cancel'),
     path('cart/remove/<int:product_id>/', views.remove_from_cart, name='remove_from_cart'),

@@ -1,4 +1,4 @@
-import stripe
+import paystack
 from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -7,12 +7,12 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from orders.models import Order
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
+paystack.api_key = settings.PAYSTACK_SECRET_KEY
 
 @login_required
 def create_checkout_session(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
-    session = stripe.checkout.Session.create(
+    session = paystack.checkout.Session.create(
         payment_method_types=['card'],
         line_items=[{
             'price_data': {
@@ -27,18 +27,18 @@ def create_checkout_session(request, order_id):
         cancel_url=request.build_absolute_uri('/orders/cancel/'),
         client_reference_id=str(order.id),
     )
-    order.stripe_payment_id = session.id
+    order.paystack_payment_id = session.id
     order.save()
     return JsonResponse({'id': session.id})
 
 
 @csrf_exempt
-def stripe_webhook(request):
+def paystack_webhook(request):
     payload = request.body
-    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+    sig_header = request.META.get('HTTP_PAYSTACK_SIGNATURE')
     try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+        event = paystack.Webhook.construct_event(
+            payload, sig_header, settings.PAYSTACK_WEBHOOK_SECRET
         )
     except ValueError:
         return JsonResponse({'status': 'invalid payload'}, status=400)
@@ -53,7 +53,7 @@ def stripe_webhook(request):
         order.save()
         Payment.objects.create(
             order=order,
-            stripe_charge_id=session['payment_intent'],
+            paystack_charge_id=session['payment_intent'],
             amount=Decimal(session['amount_total'] / 100),
             status='succeeded'
         )

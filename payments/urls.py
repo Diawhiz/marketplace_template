@@ -2,5 +2,5 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('webhook/', views.stripe_webhook, name='stripe_webhook'),
+    path('webhook/', views.paystack_webhook, name='paystack_webhook'),
 ]

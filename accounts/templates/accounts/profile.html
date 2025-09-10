@@ -36,7 +36,7 @@
                         <tr>
                             <td class="p-4">{{ order.id }}</td>
                             <td class="p-4">{{ order.created_at|date:"F d, Y" }}</td>
-                            <td class="p-4">${{ order.total_price|add:order.tax_amount }}</td>
+                            <td class="p-4">₦{{ order.total_price|add:order.tax_amount }}</td>
                             <td class="p-4">{{ order.status }}</td>
                             <td class="p-4">
                                 <a href="{% url 'orders:order_detail' order.id %}" class="text-blue-600 hover:underline" aria-label="View order {{ order.id }} details">View</a>
